@@ -5,14 +5,14 @@ The exercises in Python are included in this program.
 Contribution by O.Moreau <o.moreau@optimal-system.com>
 Objectives of this code :
 
-Reorganisation of the trainings to be reusable wih other dataset.
-Acces the functions of this program with a simple menu
-Explore Maps, Datasets and Files
-Avoid downloading several times the same dataset/files by creating a local index.json.
-The function 'plot_climatology' can be used for several varialbes (thetao, so)
-The functions 'black_sea' and 'artic_sea' load several datasets and check fo correlation 
-The functions 'martinique_sea' and 'britany_sea' will eventualy do the same...
-Present the maps in a slideshow
+    Reorganization of the trainings to be reusable with other dataset.
+    Access the functions of this program with a simple menu
+    Explore Maps, Datasets and Files
+    Avoid downloading several times the same dataset/files by creating a local index.json.
+    The function 'plot_climatology' can be used for several variables (thetao, so)
+    The functions 'black_sea' and 'artic_sea' load several datasets and check fo correlation
+    The functions 'martinique_sea' and 'britany_sea' will eventually do the same...
+    Present the maps in a slideshow
 
 """
 __version__ = '0.2'
