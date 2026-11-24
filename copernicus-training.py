@@ -11,12 +11,12 @@ Objectives of this code :
     Avoid downloading several times the same dataset/files by creating a local index.json.
     The function 'plot_climatology' can be used for several variables (thetao, so)
     The functions 'black_sea' and 'artic_sea' load several datasets and check fo correlation
-    The functions 'martinique_sea' and 'britany_sea' will eventually do the same...
+    The functions 'martinique_sea' and 'britany_sea' are almost doing the same... 
     Present the maps in a slideshow
 
 """
-__version__ = '0.2'
-__dateversion__ = 261123
+__version__ = '0.3'
+__dateversion__ = 261124
 DEBUG = False
 
 ### Import standard libraries
@@ -39,7 +39,7 @@ if not DEBUG : warnings.filterwarnings("ignore")
 
 
 ##############################################
-# Index of downloaded Copernicus Files
+# Index of downloaded Copernicus Filesdef found_file(code) :
 ##############################################
 
 directory = "cpdata"
@@ -122,6 +122,8 @@ def convert_lonlat(lat,lon,size) :
 
 def explore_maps() :
     print("\n\n====================\nExploration of Maps")
+    print("Find the latitude and longitude with : https://www.latlong.net/")
+    print("Choose the size of the map from 0.1 to 10")
     try : 
         lat=float(input("Latitude of the site ? "))
         lon=float(input("Longitude of the site ? "))
@@ -163,28 +165,43 @@ def explore_dataset() :
         pass
 
 
+# def explore_file():
+#     print("\n\n====================\nExploration of Copernicus Files")
+#     dataset =str(input("Name of the file ? "))
+#     variable=str(input("Name of the variable ? "))
+#     start_date = "2000-01-01"
+#     end_date   = "2000-02-02"
+#     try :     
+#         cop_file = copernicusmarine.subset(
+#             dataset_id=dataset,
+#             variables=[variable],
+#             start_datetime  =start_date,
+#             end_datetime    =end_date,
+#         )
+#         my_file = Path(cop_file.file_path)
+#         ds = xr.open_dataset(my_file)
+#         print("\n~~~~~~~~~~~~~~~~~~~~ Dataset   :\n",ds)
+#         print("\n~~~~~~~~~~~~~~~~~~~~ Variables :\n",ds.variables)
+#         time.sleep(10)
+#     except :
+#         print("Unknown file, sorry...")
+#         pass
+    
 def explore_file():
     print("\n\n====================\nExploration of Copernicus Files")
-    dataset =str(input("Name of the file ? "))
-    variable=str(input("Name of the variable ? "))
-    start_date = "2000-01-01"
-    end_date   = "2000-02-02"
-    try :     
-        cop_file = copernicusmarine.subset(
-            dataset_id=dataset,
-            variables=[variable],
-            start_datetime  =start_date,
-            end_datetime    =end_date,
-        )
-        my_file = Path(cop_file.file_path)
-        ds = xr.open_dataset(my_file)
-        print("\n~~~~~~~~~~~~~~~~~~~~ Dataset   :\n",ds)
-        print("\n~~~~~~~~~~~~~~~~~~~~ Variables :\n",ds.variables)
-        time.sleep(10)
-    except :
-        print("Unknown file, sorry...")
-        pass
+    code =str(input("Code of the file ? "))
     
+    filepath = found_file(code)
+    if not filepath :
+        print("You must download that subset first. Sorry..")
+        print("DataSet requested filepath :",filepath)
+    else :
+        my_file = filepath
+        ds = xr.open_dataset(my_file)
+        print("\n################ Dataset ###################  :\n",ds)
+        print("\n################ Variables #################  :\n",ds.variables)
+        time.sleep(10)
+
 
 def load_dataset(dataset_id, data_filter,dry_run=False) :
     cop_files = copernicusmarine.get(
@@ -194,6 +211,30 @@ def load_dataset(dataset_id, data_filter,dry_run=False) :
     )
     return cop_files
 
+def get_data(code,dataset,variable,*args) :
+    filepath = found_file(code)
+    if DEBUG : print("DataSet filepath :",filepath)
+    if not filepath :
+        print("Downloading of a subset frome Copernicus, please wait.")
+        cop_file = copernicusmarine.subset(
+            dataset_id=dataset,
+            variables=[variable],
+            start_datetime  =args[0],
+            end_datetime    =args[1],
+            minimum_depth   =args[2],
+            maximum_depth   =args[3],
+            output_directory=data_directory
+        )
+        my_file = Path(cop_file.file_path)
+        if DEBUG : print("\n Adding a code and a filepath into index.json : \n",code,my_file)
+        add_index(code,str(my_file))
+    else :
+        my_file = filepath
+    ds = xr.open_dataset(my_file)
+    ds = ds.squeeze() # to remove phantom data !
+    if DEBUG : print("\n Dataset content : ",ds)
+    print("Processing dataset :",ds.title)
+    return ds
 
 def plot_climatology(ax, dataset, variable):
     var = dataset[variable].data 
@@ -279,32 +320,6 @@ def black_sea() :
     time_data = 5
     time_corr = 10
 
-
-
-    def get_data(code,dataset,variable,*args) :
-        filepath = found_file(code)
-        if DEBUG : print("DataSet filepath :",filepath)
-        if not filepath :
-            print("Downloading of a subset frome Copernicus, please wait.")
-            cop_file = copernicusmarine.subset(
-                dataset_id=dataset,
-                variables=[variables],
-                start_datetime  =args[0],
-                end_datetime    =args[1],
-                minimum_depth   =args[2],
-                maximum_depth   =args[3],
-                output_directory=args[4]
-            )
-            my_file = Path(cop_file.file_path)
-            if DEBUG : print("\n Adding a code and a filepath into index.json : \n",code,my_file)
-            add_index(code,str(my_file))
-        else :
-            my_file = filepath
-        ds = xr.open_dataset(my_file)
-        ds = ds.squeeze() # to remove phantom data !
-        if DEBUG : print("\n Dataset content : ",ds)
-        print("Processing dataset :",ds.title)
-        return ds
 
 #2) Download data in arrays
     print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -450,24 +465,89 @@ def artic_sea() :
 def martinique_sea() :
     #1) define variables
     project   = "Correlate several Copernicus dataset of the sea around Martinique"
-    product   = "???"
-    URL       = "https://data.marine.copernicus.eu/product/??????/description"
+    product   = "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+    URL       = "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+    geomap    = (14.65,-61.0, 5) # Full Martinique
+    mapsize   = (10, 10)
 
     code1     = "martinique_temp"
     title1    = "Climatology of SST on the sea around Martinique"
-    dataset1  = "???"
+    dataset1  = "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m"
     variable1 = "thetao" #temperature
     label1    = "SST (°C)"
 
-    lon = -61 ; lat = 14.65 ; size = 0.8
-    lon_min, lon_max, lat_min, lat_max = convert_lonlat(lat,lon,size)
+#     code2     = "martinique_temp2"
+#     title2    = "Current in the sea around Martinique"
+#     dataset2  = "cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m"
+#     variable2 = "uo" #curent
+#     label2    = "ms"
 
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.axes(projection=ccrs.PlateCarree())
+
+   # When? Maximum period of observation
+    start_date = "2026-11-01"
+    end_date   = "2026-11-24"
+    
+    # How? Choosing temperature at the closest level layer to the surface from the product
+    min_depth = 0.5001727938652039
+    max_depth = 0.5001727938652039
+    time_data = 10
+    time_corr = 10
+
+
+
+#2) Download data in arrays
+    print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(project)
+
+    ds1 = get_data(code1,dataset1,variable1,start_date,end_date,min_depth,max_depth)
+#     ds2 = get_data(code2,dataset2,variable2,start_date,end_date,min_depth,max_depth)
+#     ds3 = get_data(code3,dataset3,variable3,start_date,end_date,min_depth,max_depth)
+#     ds4 = get_data(code4,dataset4,variable4,start_date,end_date,min_depth,max_depth)
+    
+#3) Analyse data
+#     temperature = ds1[variable1]
+#     current =     ds2[variable2]
+    ds1_mean = ds1.mean(dim="time")
+#     ds2_mean = ds2.mean(dim="time")
+#     ds3_mean = ds3.mean(dim="time")
+#     ds4_mean = ds4.mean(dim="time")
+#     correlation1 = xr.corr(ds1.thetao, ds2.so,  dim="time")
+#     correlation2 = xr.corr(ds1.thetao, ds3[variable3], dim="time")
+#     correlation3 = xr.corr(ds1.thetao, ds4.evs, dim="time")
+#     if DEBUG :
+#         print("\n Analyse result of :",code1,ds1_mean)
+#         print("\n Analyse result of :",code2,ds2_mean)
+#         print("\n Analyse result of :",code3,ds3_mean)
+#         print("\n Analyse result of :",code4,ds4_mean)
+
+
+#4) Plot the data maps
+    # Plot map
+    lon_min, lon_max, lat_min, lat_max = convert_lonlat(geomap[0],geomap[1],geomap[2])
+    fig, ax = background (lon_min, lon_max, lat_min, lat_max)
     basic_geo_features(ax, lon_min, lon_max, lat_min, lat_max)
-    title(ax,title1)
-    plt.show()
-
+ 
+    for ds, var, label, ttl, dur in [
+        (ds1_mean, variable1, label1, title1, time_data),
+#         (ds2_mean, variable2, label2, title2, time_data),
+#         (ds3_mean, variable3, label3, title3, time_data),
+#         (ds4_mean, variable4, label4, title4, time_data),
+    ]:
+        im = plot_climatology(ax, ds, var)
+#         plt.colorbar(im, ax=ax, label=label, shrink=0.5)
+        ax.set_title(ttl)
+        plt.pause(dur)
+        plt.close("all")
+        
+# Plot the correlation maps
+#     for correlation, title, label in [
+#         (correlation1, titleC1, labelC1),
+#         (correlation2, titleC2, labelC2),
+#         (correlation3, titleC3, labelC3),
+#     ]:
+#         fig, ax = background(lon_min, lon_max, lat_min, lat_max)
+#         plot_correlation_map(fig, ax, correlation, title, label, time_corr)
+#         plt.close("all")
 
 
 ###################################
@@ -475,24 +555,84 @@ def martinique_sea() :
 def britany_sea() :
     #1) define variables
     project   = "Correlate several Copernicus dataset of the sea around Britany"
-    product   = "???"
-    URL       = "https://data.marine.copernicus.eu/product/??????/description"
-
+    product   = "GLOBAL_ANALYSISFORECAST_PHY_001_024"
+    URL       = "https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description"
+    geomap    = (48.25, -3.5, 25)
+    mapsize   = (10, 10)
+   
     code1     = "britany_temp"
     title1    = "Climatology of SST on the sea around Britany"
-    dataset1  = "???"
+    dataset1  = "cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m"
     variable1 = "thetao" #temperature
     label1    = "SST (°C)"
-        
-    lon = -3.5 ; lat = 48.25 ; size = 3
-    lon_min, lon_max, lat_min, lat_max = convert_lonlat(lat,lon,size)
 
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.axes(projection=ccrs.PlateCarree())
-    basic_geo_features(ax, lon_min, lon_max, lat_min, lat_max)
-    title(ax,title1)
-    plt.show()
+   # When? Maximum period of observation
+    start_date = "2026-11-01"
+    end_date   = "2026-11-24"
     
+    # How? Choosing temperature at the closest level layer to the surface from the product
+    min_depth = 0.5001727938652039
+    max_depth = 0.5001727938652039
+    time_data = 20
+    time_corr = 10
+
+
+
+#2) Download data in arrays
+    print("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print(project)
+
+    ds1 = get_data(code1,dataset1,variable1,start_date,end_date,min_depth,max_depth)
+#     ds2 = get_data(code2,dataset2,variable2,start_date,end_date,min_depth,max_depth)
+#     ds3 = get_data(code3,dataset3,variable3,start_date,end_date,min_depth,max_depth)
+#     ds4 = get_data(code4,dataset4,variable4,start_date,end_date,min_depth,max_depth)
+    
+#3) Analyse data
+    ds1_mean = ds1.mean(dim="time")
+#     ds2_mean = ds2.mean(dim="time")
+#     ds3_mean = ds3.mean(dim="time")
+#     ds4_mean = ds4.mean(dim="time")
+#     correlation1 = xr.corr(ds1.thetao, ds2.so,  dim="time")
+#     correlation2 = xr.corr(ds1.thetao, ds3[variable3], dim="time")
+#     correlation3 = xr.corr(ds1.thetao, ds4.evs, dim="time")
+#     if DEBUG :
+#         print("\n Analyse result of :",code1,ds1_mean)
+#         print("\n Analyse result of :",code2,ds2_mean)
+#         print("\n Analyse result of :",code3,ds3_mean)
+#         print("\n Analyse result of :",code4,ds4_mean)
+
+
+#4) Plot the data maps
+    # Plot map
+    lon_min, lon_max, lat_min, lat_max = convert_lonlat(geomap[0],geomap[1],geomap[2])
+    fig, ax = background (lon_min, lon_max, lat_min, lat_max)
+    basic_geo_features(ax, lon_min, lon_max, lat_min, lat_max)
+ 
+    for ds, var, label, ttl, dur in [
+        (ds1_mean, variable1, label1, title1, time_data),
+#         (ds2_mean, variable2, label2, title2, time_data),
+#         (ds3_mean, variable3, label3, title3, time_data),
+#         (ds4_mean, variable4, label4, title4, time_data),
+    ]:
+        im = plot_climatology(ax, ds, var)
+        plt.colorbar(im, ax=ax, label=label, shrink=0.5)
+        ax.set_title(ttl)
+        plt.pause(dur)
+#         plt.close("all")
+        
+# Plot the correlation maps
+#     for correlation, title, label in [
+#         (correlation1, titleC1, labelC1),
+#         (correlation2, titleC2, labelC2),
+#         (correlation3, titleC3, labelC3),
+#     ]:
+#         fig, ax = background(lon_min, lon_max, lat_min, lat_max)
+#         plot_correlation_map(fig, ax, correlation, title, label, time_corr)
+#         plt.close("all")
+
+
+
+
  #################################   
     
 def loop() :
